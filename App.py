@@ -7,6 +7,7 @@ from pathlib import Path
 from enum import Enum
 import zipfile
 import warnings
+from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass
 from typing import Any
@@ -25,9 +26,21 @@ LIBS = [
 ]
 
 RANDOM_STATE = 216
+TRAIN_RATIO = 0.80
+TEST_RATIO = 0.20
+POLYNOMIAL_DEGREE = 2
+RIDGE_ALPHA = 1.0
+CORRELATION_THRESHOLD = 0.30
+SHOW_PLOTS = False
+SAVE_PLOTS = True
 DATASET_URL = "https://www.kaggle.com/datasets/nikhil7280/student-performance-multiple-linear-regression"
+DATASET_ARCHIVE_RAW_URL = "https://raw.githubusercontent.com/UIDE-Tareas/10-Machine-Learning-Supervised-And-Unsupervised-Tarea1/main/Data/archive.zip"
 DATASET_ARCHIVE_FILENAME = "archive.zip"
 DATASET_CSV_FILENAME = "Student_Performance.csv"
+TARGET_COLUMN = "PerformanceIndex"
+TEMP_DIR = "Temp"
+RESULTS_DIR = Path("Results")
+RUN_RESULTS_DIR = RESULTS_DIR / datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
 class ConsoleColor(Enum):
@@ -163,6 +176,14 @@ def ShowEnvironmentInfo():
 InstallDeps(LIBS)
 ShowEnvironmentInfo()
 
+def ClearConsole():
+    if os.name == "nt":
+        RunCommand(["cmd", "/c", "cls"], printCommand=False, printError=False)
+    else:
+        RunCommand(["clear"], printCommand=False, printError=False)
+
+
+
 # Third-party imports after dependency installation.
 import requests
 import pandas
@@ -284,13 +305,146 @@ def UnzipFile(filename: str, outputDir: str):
         print(f"Error: {e}")
 
 
-def ShowDatasetUrl(url: str = DATASET_URL):
+def CreateRunResultsDir(resultsDir: Path = RUN_RESULTS_DIR) -> Path:
+    resultsDir.mkdir(parents=True, exist_ok=True)
+    ShowSuccessMessage(f'Directorio de resultados: "{resultsDir.resolve()}".')
+    return resultsDir
+
+
+def ShowDatasetUrl(title: str = "Stage 1 - Dataset URL", url: str = DATASET_URL):
     ShowTitleBox(
-        "Student Performance Dataset",
+        title,
         boxLineStyle=TitleBoxLineStyle.DOUBLE,
         color=ConsoleColor.GREEN,
     )
     print(f"Dataset URL: {url}")
+
+
+def DownloadDatasetArchive(title: str = "Stage 2 - Download Dataset"):
+    ShowTitleBox(
+        title,
+        boxLineStyle=TitleBoxLineStyle.DOUBLE,
+        color=ConsoleColor.GREEN,
+    )
+    archivePath = Path(TEMP_DIR) / DATASET_ARCHIVE_FILENAME
+    DownloadFile(
+        DATASET_ARCHIVE_RAW_URL,
+        str(archivePath),
+        overwrite=False,
+    )
+    return archivePath
+
+
+def UnzipDatasetArchive(title: str = "Stage 2 - Download Dataset"):
+    archivePath = DownloadDatasetArchive(title)
+    csvPath = Path(TEMP_DIR) / DATASET_CSV_FILENAME
+    if csvPath.exists() and csvPath.is_file() and csvPath.stat().st_size > 0:
+        print(f'✅ Ya existe: "{csvPath.resolve()}". No se descomprime nuevamente.')
+        return csvPath
+    UnzipFile(str(archivePath), TEMP_DIR)
+    return csvPath
+
+
+def LoadRawDataset(title: str = "Stage 3 - Read Dataset") -> pandas.DataFrame:
+    ShowTitleBox(
+        title,
+        boxLineStyle=TitleBoxLineStyle.DOUBLE,
+        color=ConsoleColor.GREEN,
+    )
+    csvPath = Path(TEMP_DIR) / DATASET_CSV_FILENAME
+    dfRaw = pandas.read_csv(csvPath)
+    ShowSuccessMessage(
+        f'Dataset cargado desde "{csvPath.resolve()}". Filas: {dfRaw.shape[0]}, Columnas: {dfRaw.shape[1]}'
+    )
+    return dfRaw
+
+
+def ShowRawDatasetInfo(
+    dfRaw: pandas.DataFrame,
+    stageTitle: str = "Stage 4 - Inspect DataFrame",
+    dfTitle: str = "dfRaw",
+):
+    ShowTitleBox(
+        stageTitle,
+        boxLineStyle=TitleBoxLineStyle.DOUBLE,
+        color=ConsoleColor.GREEN,
+    )
+    ShowDfInfo(dfRaw, f"Información - {dfTitle}")
+    ShowDfNanValues(dfRaw, f"Valores nulos - {dfTitle}")
+    ShowDfDuplicates(dfRaw, f"Duplicados - {dfTitle}")
+    ShowDfStats(dfRaw, f"Estadística descriptiva - {dfTitle}")
+    ShowDfHead(dfRaw, f"Primeras 10 filas - {dfTitle}", headQty=10)
+
+
+def CleanDataFrame(
+    dfRaw: pandas.DataFrame,
+    stageTitle: str = "Stage 5 - Clean DataFrame",
+    dfTitle: str = "dfClean",
+) -> pandas.DataFrame:
+    ShowTitleBox(
+        stageTitle,
+        boxLineStyle=TitleBoxLineStyle.DOUBLE,
+        color=ConsoleColor.GREEN,
+    )
+    dfClean = dfRaw.copy()
+    dfClean = pandas.get_dummies(dfClean, drop_first=True)
+    ShowSuccessMessage("One-Hot Encoding aplicado con drop_first=True.")
+    boolColumns = dfClean.select_dtypes(include="bool").columns
+    dfClean[boolColumns] = dfClean[boolColumns].astype(int)
+    ShowSuccessMessage("Columnas booleanas convertidas a números 0/1.")
+    dfClean = RemoveDfDuplicates(dfClean)
+    ShowSuccessMessage("Filas duplicadas eliminadas.")
+    dfClean = dfClean.dropna().reset_index(drop=True)
+    ShowSuccessMessage("Filas con valores nulos eliminadas.")
+    dfClean = NormalizeColumnNames(dfClean)
+    ShowSuccessMessage("Nombres de columnas normalizados.")
+    ShowDfInfo(dfClean, f"Información - {dfTitle}")
+    ShowDfNanValues(dfClean, f"Valores nulos - {dfTitle}")
+    ShowDfDuplicates(dfClean, f"Duplicados - {dfTitle}")
+    ShowDfStats(dfClean, f"Estadística descriptiva - {dfTitle}")
+    ShowDfHead(dfClean, f"Primeras 10 filas - {dfTitle}", headQty=10)
+    return dfClean
+
+
+def PlotTargetDistribution(
+    df: pandas.DataFrame,
+    targetColumn: str = TARGET_COLUMN,
+    stageTitle: str = "Stage 6 - Target Distribution",
+    resultsDir: Path = RUN_RESULTS_DIR,
+    showPlot: bool = SHOW_PLOTS,
+    savePlot: bool = SAVE_PLOTS,
+):
+    ShowTitleBox(
+        stageTitle,
+        boxLineStyle=TitleBoxLineStyle.DOUBLE,
+        color=ConsoleColor.GREEN,
+    )
+
+    if targetColumn not in df.columns:
+        raise ValueError(f'No existe la columna objetivo "{targetColumn}" en el DataFrame.')
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.canvas.manager.set_window_title(f"{targetColumn} - Target Distribution")
+
+    sns.histplot(df[targetColumn], kde=True, ax=axes[0])
+    axes[0].set_title(f"{targetColumn} - Distribution")
+    axes[0].set_xlabel(targetColumn)
+    axes[0].set_ylabel("Frequency")
+
+    sns.boxplot(x=df[targetColumn], ax=axes[1])
+    axes[1].set_title(f"{targetColumn} - Boxplot")
+    axes[1].set_xlabel(targetColumn)
+
+    plt.tight_layout()
+    outputPath = resultsDir / f"{targetColumn}_Distribution.png"
+    if savePlot:
+        outputPath.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(outputPath, dpi=150)
+        ShowSuccessMessage(f'Gráfico guardado en "{outputPath.resolve()}".')
+    if showPlot:
+        plt.show()
+    else:
+        plt.close(fig)
 
 
 #### ███████████████████████████████████████████████ -------------
@@ -453,9 +607,13 @@ def ShowDfCorrelation(
     showTable: bool = False,
     figsize: tuple = (8, 6),
     annotate: bool = True,
+    outputPath: Optional[Path] = None,
+    showPlot: bool = SHOW_PLOTS,
+    savePlot: bool = SAVE_PLOTS,
 ):
     if fig is None or ax is None:
         fig, ax = plt.subplots(figsize=figsize)
+    fig.canvas.manager.set_window_title(f"{title} - {level.name} Correlation")
 
     print(f"ℹ️ {title.upper()} - MATRIZ DE CORRELACIÓN ({level.name})")
 
@@ -502,7 +660,14 @@ def ShowDfCorrelation(
     ax.tick_params(axis="y", rotation=0)
 
     plt.tight_layout()
-    plt.show()
+    if savePlot and outputPath is not None:
+        outputPath.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(outputPath, dpi=150)
+        ShowSuccessMessage(f'Gráfico guardado en "{outputPath.resolve()}".')
+    if showPlot:
+        plt.show()
+    else:
+        plt.close(fig)
 
     if showTable:
         PrintData(corr.round(3))
@@ -581,18 +746,91 @@ def ShowDatasetSplitInfo(split: DatasetSplit, title: str, headQty: int = 5):
 
 # Realiza el split del Dataset, en Train y test utilizando el ratio.
 def SplitDataset(
-    data: Dataset, trainRatio: float = 0.8, randomState: int = RANDOM_STATE
+    data: Dataset,
+    trainRatio: float = TRAIN_RATIO,
+    testRatio: float = TEST_RATIO,
+    randomState: int = RANDOM_STATE
 ) -> DatasetSplit:
+    if round(trainRatio + testRatio, 10) != 1:
+        raise ValueError("trainRatio y testRatio deben sumar 1.")
+
     XTrain, XTest, yTrain, yTest = train_test_split(
         data.X,
         data.y,
         train_size=trainRatio,
+        test_size=testRatio,
         random_state=randomState,
     )
     return DatasetSplit(
         Train=Dataset(X=XTrain.reset_index(drop=True), y=yTrain.reset_index(drop=True)),
         Test=Dataset(X=XTest.reset_index(drop=True), y=yTest.reset_index(drop=True)),
     )
+
+
+def CreateTrainTestSplit(
+    dfClean: pandas.DataFrame,
+    targetColumn: str = TARGET_COLUMN,
+    trainRatio: float = TRAIN_RATIO,
+    testRatio: float = TEST_RATIO,
+    stageTitle: str = "Stage 7 - Train Test Split",
+) -> DatasetSplit:
+    ShowTitleBox(
+        stageTitle,
+        boxLineStyle=TitleBoxLineStyle.DOUBLE,
+        color=ConsoleColor.GREEN,
+    )
+
+    if targetColumn not in dfClean.columns:
+        raise ValueError(f'No existe la columna objetivo "{targetColumn}" en dfClean.')
+
+    X = DropColumns(dfClean, [targetColumn])
+    y = dfClean[[targetColumn]]
+    split = SplitDataset(
+        Dataset(X=X, y=y),
+        trainRatio=trainRatio,
+        testRatio=testRatio,
+    )
+
+    ShowSuccessMessage(
+        f"Split aplicado: "
+        f"Train {trainRatio:.0%} - X: {split.Train.X.shape[0]} filas x {split.Train.X.shape[1]} columnas, "
+        f"y: {split.Train.y.shape[0]} filas x {split.Train.y.shape[1]} columnas. "
+        f"Test {testRatio:.0%} - X: {split.Test.X.shape[0]} filas x {split.Test.X.shape[1]} columnas, "
+        f"y: {split.Test.y.shape[0]} filas x {split.Test.y.shape[1]} columnas."
+    )
+    ShowDatasetSplitHead(split, "dfClean", headQty=10)
+    return split
+
+
+def ShowTrainCorrelationMatrix(
+    split: DatasetSplit,
+    threshold: float = CORRELATION_THRESHOLD,
+    stageTitle: str = "Stage 8 - Train Correlation Matrices",
+    resultsDir: Path = RUN_RESULTS_DIR,
+    showPlot: bool = SHOW_PLOTS,
+    savePlot: bool = SAVE_PLOTS,
+):
+    ShowTitleBox(
+        stageTitle,
+        boxLineStyle=TitleBoxLineStyle.DOUBLE,
+        color=ConsoleColor.GREEN,
+    )
+    for level in [
+        CorrelationType.ALL,
+        CorrelationType.STRONG,
+        CorrelationType.WEAK,
+    ]:
+        ShowDfCorrelation(
+            split.Train.X,
+            f"X Train - {level.name}",
+            level=level,
+            umbral=threshold,
+            showTable=True,
+            figsize=(10, 8),
+            outputPath=resultsDir / f"CorrelationMatrix_{level.name}.png",
+            showPlot=showPlot,
+            savePlot=savePlot,
+        )
 
 
 # Contrato para los escaladores
@@ -750,15 +988,37 @@ def RemoveDfDuplicates(df: pandas.DataFrame, inplace: bool = False) -> pandas.Da
 
 
 # Requested models
-def CreatePolynomialRegression(degree: int = 2, **kwargs):
+def CreatePolynomialRegression(degree: int = POLYNOMIAL_DEGREE, **kwargs):
     return make_pipeline(
         PolynomialFeatures(degree=degree, include_bias=False),
+        StandardScaler(),
         LinearRegression(**kwargs)
     )
 
 
-def CreateRidgeRegression(alpha: float = 1.0, **kwargs) -> Ridge:
-    return Ridge(alpha=alpha, **kwargs)
+def CreateRidgeRegression(alpha: float = RIDGE_ALPHA, **kwargs):
+    return make_pipeline(
+        StandardScaler(),
+        Ridge(alpha=alpha, **kwargs)
+    )
+
+
+def ConfigureRegressors(
+    stageTitle: str = "Stage 9 - Configure Regressors",
+) -> dict[str, Any]:
+    ShowTitleBox(
+        stageTitle,
+        boxLineStyle=TitleBoxLineStyle.DOUBLE,
+        color=ConsoleColor.GREEN,
+    )
+    regressors = {
+        "PolynomialRegression": CreatePolynomialRegression(degree=POLYNOMIAL_DEGREE),
+        "RidgeRegression": CreateRidgeRegression(alpha=RIDGE_ALPHA),
+    }
+    ShowSuccessMessage(
+        f"Regresores configurados: {', '.join(regressors.keys())}."
+    )
+    return regressors
 
 
 @dataclass
@@ -769,6 +1029,14 @@ class RegressionMetrics:
     R2: float
 
 
+@dataclass
+class TrainedRegressorResult:
+    Name: str
+    Model: Any
+    Metrics: RegressionMetrics
+    Predictions: pandas.DataFrame
+
+
 def EvaluateRegression(yTrue, yPred) -> RegressionMetrics:
     mse = mean_squared_error(yTrue, yPred)
     return RegressionMetrics(
@@ -777,13 +1045,157 @@ def EvaluateRegression(yTrue, yPred) -> RegressionMetrics:
         RMSE=float(np.sqrt(mse)),
         R2=r2_score(yTrue, yPred)
     )
+
+
+def ShowRegressionMetrics(results: dict[str, TrainedRegressorResult]):
+    metricsRows = []
+    for name, result in results.items():
+        metricsRows.append({
+            "Model": name,
+            "MAE": result.Metrics.MAE,
+            "MSE": result.Metrics.MSE,
+            "RMSE": result.Metrics.RMSE,
+            "R2": result.Metrics.R2,
+        })
+    metricsDf = pandas.DataFrame(metricsRows)
+    PrintData(metricsDf.round(4))
+
+
+def CompareRegressorResults(
+    results: dict[str, TrainedRegressorResult],
+    stageTitle: str = "Stage 11 - Compare Regressors",
+):
+    ShowTitleBox(
+        stageTitle,
+        boxLineStyle=TitleBoxLineStyle.DOUBLE,
+        color=ConsoleColor.GREEN,
+    )
+
+    bestByRmse = min(results.values(), key=lambda result: result.Metrics.RMSE)
+    bestByR2 = max(results.values(), key=lambda result: result.Metrics.R2)
+
+    ShowSuccessMessage(
+        f"Mejor modelo según RMSE: {bestByRmse.Name} "
+        f"(RMSE={bestByRmse.Metrics.RMSE:.4f})."
+    )
+    ShowSuccessMessage(
+        f"Mejor modelo según R2: {bestByR2.Name} "
+        f"(R2={bestByR2.Metrics.R2:.4f})."
+    )
+
+    if bestByRmse.Name == bestByR2.Name:
+        ShowInfoMessage(f"Modelo recomendado: {bestByRmse.Name}.")
+    else:
+        ShowWarningMessage(
+            "RMSE y R2 recomiendan modelos distintos; revisar el objetivo del análisis."
+        )
+
+
+def PlotRegressionResult(
+    modelName: str,
+    yTrue: np.ndarray,
+    yPred: np.ndarray,
+    resultsDir: Path = RUN_RESULTS_DIR,
+    showPlot: bool = SHOW_PLOTS,
+    savePlot: bool = SAVE_PLOTS,
+):
+    residuals = yTrue - yPred
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.canvas.manager.set_window_title(f"{modelName} - Regression Results")
+
+    sns.scatterplot(x=yTrue, y=yPred, ax=axes[0])
+    minValue = min(yTrue.min(), yPred.min())
+    maxValue = max(yTrue.max(), yPred.max())
+    axes[0].plot([minValue, maxValue], [minValue, maxValue], color="red", linestyle="--")
+    axes[0].set_title(f"{modelName} - Actual vs Predicted")
+    axes[0].set_xlabel("Actual")
+    axes[0].set_ylabel("Predicted")
+
+    sns.scatterplot(x=yPred, y=residuals, ax=axes[1])
+    axes[1].axhline(0, color="red", linestyle="--")
+    axes[1].set_title(f"{modelName} - Residuals")
+    axes[1].set_xlabel("Predicted")
+    axes[1].set_ylabel("Residual")
+
+    plt.tight_layout()
+    outputPath = resultsDir / f"{modelName}_RegressionResults.png"
+    if savePlot:
+        outputPath.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(outputPath, dpi=150)
+        ShowSuccessMessage(f'Gráfico guardado en "{outputPath.resolve()}".')
+    if showPlot:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
+def TrainAndEvaluateRegressors(
+    regressors: dict[str, Any],
+    split: DatasetSplit,
+    stageTitle: str = "Stage 10 - Train And Evaluate Regressors",
+    resultsDir: Path = RUN_RESULTS_DIR,
+    showPlot: bool = SHOW_PLOTS,
+    savePlot: bool = SAVE_PLOTS,
+) -> dict[str, TrainedRegressorResult]:
+    ShowTitleBox(
+        stageTitle,
+        boxLineStyle=TitleBoxLineStyle.DOUBLE,
+        color=ConsoleColor.GREEN,
+    )
+
+    results: dict[str, TrainedRegressorResult] = {}
+    yTest = split.Test.y.iloc[:, 0].to_numpy()
+
+    for name, regressor in regressors.items():
+        ShowInfoMessage(f"Entrenando {name}.")
+        regressor.fit(split.Train.X, split.Train.y)
+        yPred = np.ravel(regressor.predict(split.Test.X))
+        metrics = EvaluateRegression(yTest, yPred)
+        predictions = pandas.DataFrame({
+            "Actual": yTest,
+            "Predicted": yPred,
+            "Residual": yTest - yPred,
+        })
+        results[name] = TrainedRegressorResult(
+            Name=name,
+            Model=regressor,
+            Metrics=metrics,
+            Predictions=predictions,
+        )
+        PlotRegressionResult(
+            name,
+            yTest,
+            yPred,
+            resultsDir=resultsDir,
+            showPlot=showPlot,
+            savePlot=savePlot,
+        )
+
+    ShowRegressionMetrics(results)
+    return results
     
 
 ### ███████████████████████████████████████████████ -------------
 
 def main():
     """Entry point for the regression algorithms script."""
+    ClearConsole()
+    resultsDir = CreateRunResultsDir()
     ShowDatasetUrl()
+    UnzipDatasetArchive()
+    dfRaw = LoadRawDataset()
+    ShowRawDatasetInfo(dfRaw, dfTitle="dfRaw")
+    dfClean = CleanDataFrame(dfRaw, dfTitle="dfClean")
+    PlotTargetDistribution(dfClean, resultsDir=resultsDir)
+    datasetSplit = CreateTrainTestSplit(dfClean)
+    ShowTrainCorrelationMatrix(datasetSplit, resultsDir=resultsDir)
+    regressors = ConfigureRegressors()
+    trainedRegressors = TrainAndEvaluateRegressors(
+        regressors,
+        datasetSplit,
+        resultsDir=resultsDir,
+    )
+    CompareRegressorResults(trainedRegressors)
 
 
 if __name__ == "__main__":
