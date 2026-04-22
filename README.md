@@ -61,7 +61,7 @@ El script sigue una estructura por etapas:
 
 2. **Download Dataset**
    
-   Descarga `archive.zip` desde GitHub Raw hacia la carpeta `Temp/`. Si el archivo ya existe, no lo vuelve a descargar.
+   Descarga `archive.zip` desde GitHub Raw hacia la carpeta `Temp/`. Si el archivo ya existe, no lo vuelve a descargar. El dataset original proviene de Kaggle (Narayan, s. f.).
 
 3. **Read Dataset**
    
@@ -73,7 +73,7 @@ El script sigue una estructura por etapas:
 
 5. **Clean DataFrame**
    
-   Crea `dfClean` a partir de `dfRaw`. Aplica One-Hot Encoding, convierte columnas booleanas a `0/1`, elimina duplicados, elimina valores nulos y normaliza nombres de columnas.
+   Crea `dfClean` a partir de `dfRaw`. Aplica One-Hot Encoding, convierte columnas booleanas a `0/1`, elimina duplicados, elimina valores nulos y normaliza nombres de columnas. La conversión categórica se realiza con `pandas.get_dummies` (The pandas development team, s. f.).
 
 6. **Target Distribution**
    
@@ -81,7 +81,7 @@ El script sigue una estructura por etapas:
 
 7. **Train Test Split**
    
-   Divide el dataset limpio en entrenamiento y prueba usando `80%` para entrenamiento y `20%` para prueba.
+   Divide el dataset limpio en entrenamiento y prueba usando `80%` para entrenamiento y `20%` para prueba mediante `train_test_split` (scikit-learn developers, s. f.-c).
 
 8. **Train Correlation Matrices**
    
@@ -92,6 +92,8 @@ El script sigue una estructura por etapas:
    Configura los modelos de regresión:
    - `PolynomialRegression`
    - `RidgeRegression`
+
+   La regresión polinomial se implementa con `PolynomialFeatures` (scikit-learn developers, s. f.-b) y Ridge se implementa con `Ridge` de scikit-learn (scikit-learn developers, s. f.-a).
 
 10. **Train And Evaluate Regressors**
    
@@ -115,7 +117,7 @@ Fuente original:
 https://www.kaggle.com/datasets/nikhil7280/student-performance-multiple-linear-regression
 ```
 
-Este dataset se usa porque contiene una variable objetivo numérica, `PerformanceIndex`, adecuada para problemas de regresión supervisada. Las variables predictoras incluyen horas de estudio, puntajes previos, horas de sueño, exámenes practicados y actividades extracurriculares.
+Este dataset se usa porque contiene una variable objetivo numérica, `PerformanceIndex`, adecuada para problemas de regresión supervisada. Las variables predictoras incluyen horas de estudio, puntajes previos, horas de sueño, exámenes practicados y actividades extracurriculares (Narayan, s. f.).
 
 ### Descripción Del Dataset
 
@@ -137,7 +139,7 @@ El objetivo del dataset es permitir el análisis de la relación entre las varia
 
 Es importante aclarar que este dataset es **sintético** y fue creado con fines ilustrativos. Por lo tanto, las relaciones observadas entre variables no necesariamente representan escenarios reales.
 
-Licencia: cualquier persona puede compartir y usar los datos.
+Licencia: según la descripción publicada en Kaggle, cualquier persona puede compartir y usar los datos (Narayan, s. f.).
 
 ## 5. Archivos Generados
 
@@ -287,9 +289,45 @@ Los modelos utilizados son:
 - `PolynomialRegression`: usa `PolynomialFeatures`, `StandardScaler` y `LinearRegression`.
 - `RidgeRegression`: usa `StandardScaler` y `Ridge`.
 
+### Polynomial Regression
+
+La regresión polinomial permite modelar relaciones no lineales entre las variables predictoras y la variable objetivo. En este proyecto se construye con `PolynomialFeatures`, que genera combinaciones polinomiales e interacciones entre las variables de entrada (scikit-learn developers, s. f.-b). Luego se aplica `StandardScaler` para escalar las variables generadas y finalmente `LinearRegression` entrena el modelo sobre esas nuevas características.
+
+Se usa `POLYNOMIAL_DEGREE = 2` porque es un punto de partida razonable: permite capturar curvaturas e interacciones simples sin aumentar demasiado la complejidad del modelo. Grados más altos podrían generar muchas columnas adicionales y aumentar el riesgo de sobreajuste.
+
+### Ridge Regression
+
+Ridge Regression es una regresión lineal regularizada con penalización L2 (scikit-learn developers, s. f.-a). Esta penalización reduce la magnitud de los coeficientes y ayuda a controlar problemas de varianza o multicolinealidad. En este proyecto se usa junto con `StandardScaler`, porque Ridge es sensible a la escala de las variables.
+
+Se usa `RIDGE_ALPHA = 1.0` como valor inicial de regularización. Un `alpha` mayor aumenta la penalización y puede simplificar el modelo; un `alpha` menor se acerca más a una regresión lineal ordinaria.
+
 Las métricas calculadas son:
 
 - `MAE`: Error absoluto medio.
 - `MSE`: Error cuadrático medio.
 - `RMSE`: Raíz del error cuadrático medio.
 - `R2`: Coeficiente de determinación.
+
+## 9. Conclusión Y Recomendación
+
+El proyecto implementa un flujo completo de regresión supervisada: descarga del dataset, carga, inspección, limpieza, codificación de variables categóricas, división train/test, visualización, entrenamiento, evaluación y comparación de modelos.
+
+El dataset es apropiado para este ejercicio porque tiene una variable objetivo numérica (`PerformanceIndex`) y varias variables predictoras relacionadas con hábitos o antecedentes académicos. Sin embargo, al ser un dataset sintético, las conclusiones deben interpretarse como resultado de un ejercicio académico y no como evidencia directa de comportamiento real de estudiantes.
+
+Los gráficos de distribución muestran que `PerformanceIndex` tiene un rango amplio y sin outliers extremos evidentes. Las matrices de correlación entre predictores muestran baja multicolinealidad, lo cual favorece el uso de modelos lineales y regularizados. Los gráficos de predicción contra valores reales muestran que ambos modelos se ajustan muy bien al conjunto de prueba.
+
+Como recomendación general, Ridge Regression es una opción sólida como modelo base porque es más simple, regularizado e interpretable. Polynomial Regression puede ser útil si se desea capturar interacciones o relaciones no lineales, pero debe usarse con cuidado porque al aumentar el grado polinomial también aumenta la complejidad y el riesgo de sobreajuste.
+
+Para una mejora futura, se recomienda probar validación cruzada y búsqueda de hiperparámetros para `RIDGE_ALPHA` y `POLYNOMIAL_DEGREE`, en lugar de usar valores fijos.
+
+## 10. Referencias
+
+Narayan, N. (s. f.). *Student Performance (Multiple Linear Regression)* [Conjunto de datos]. Kaggle. Recuperado el 22 de abril de 2026, de https://www.kaggle.com/datasets/nikhil7280/student-performance-multiple-linear-regression
+
+scikit-learn developers. (s. f.-a). *Ridge*. scikit-learn. Recuperado el 22 de abril de 2026, de https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
+
+scikit-learn developers. (s. f.-b). *PolynomialFeatures*. scikit-learn. Recuperado el 22 de abril de 2026, de https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PolynomialFeatures.html
+
+scikit-learn developers. (s. f.-c). *train_test_split*. scikit-learn. Recuperado el 22 de abril de 2026, de https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
+
+The pandas development team. (s. f.). *pandas.get_dummies*. pandas. Recuperado el 22 de abril de 2026, de https://pandas.pydata.org/docs/reference/api/pandas.get_dummies.html
