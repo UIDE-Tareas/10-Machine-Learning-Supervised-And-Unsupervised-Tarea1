@@ -1,4 +1,25 @@
+<div style="display: table; width: 100%;">
+  <div style="display: table-cell; text-align: center; vertical-align: middle; width: 70%;">
+    <h1>MACHINE LEARNING SUPERVISED AND UNSUPERVISED</h1>
+  </div>
+  <div style="display: table-cell; text-align: center; vertical-align: middle; width: 30%;">
+    <img src="https://github.com/UIDE-Tareas/10-Machine-Learning-Supervised-And-Unsupervised-Tarea1/blob/main/Assets/UideLogo.png?raw=true" alt="logo UIDE" style="width:50%;">
+  </div>
+</div>
+<hr />
+
 # Proyecto de Algoritmos de Regresión
+
+## Datos Del Proyecto
+
+- **Materia:** MACHINE LEARNING SUPERVISED AND UNSUPERVISED
+- **Tarea:** Tarea 1
+- **Docente:** Alexis Iveth Correa Vivas
+- **Autores:**
+  - Evelin Marisol Rosero Ordoñez
+  - Mayra Cecilia Salazar Grandes
+  - Samantha Carolina Buitron Pambabay
+  - Jose Manuel Espinoza Bone
 
 Este proyecto aplica dos algoritmos de regresión a un conjunto de datos usando Python. El flujo descarga el dataset, lo descomprime, lo carga con `pandas`, realiza limpieza, visualiza información relevante, divide los datos en entrenamiento/prueba, entrena los modelos y compara sus resultados.
 
@@ -175,7 +196,7 @@ Archivo:
 Assets/Results/PerformanceIndex_Distribution.png
 ```
 
-![Distribución de PerformanceIndex](Assets/Results/PerformanceIndex_Distribution.png)
+![Distribución de PerformanceIndex](https://raw.githubusercontent.com/UIDE-Tareas/10-Machine-Learning-Supervised-And-Unsupervised-Tarea1/main/Assets/Results/PerformanceIndex_Distribution.png)
 
 El histograma muestra que `PerformanceIndex` se distribuye en un rango aproximado de `10` a `100`, con mayor concentración en valores medios. El boxplot no evidencia valores extremos fuertes, por lo que la variable objetivo parece adecuada para modelos de regresión sin una limpieza agresiva de outliers.
 
@@ -189,11 +210,11 @@ Assets/Results/CorrelationMatrix_STRONG.png
 Assets/Results/CorrelationMatrix_WEAK.png
 ```
 
-![Matriz de correlación completa](Assets/Results/CorrelationMatrix_ALL.png)
+![Matriz de correlación completa](https://raw.githubusercontent.com/UIDE-Tareas/10-Machine-Learning-Supervised-And-Unsupervised-Tarea1/main/Assets/Results/CorrelationMatrix_ALL.png)
 
-![Matriz de correlación fuerte](Assets/Results/CorrelationMatrix_STRONG.png)
+![Matriz de correlación fuerte](https://raw.githubusercontent.com/UIDE-Tareas/10-Machine-Learning-Supervised-And-Unsupervised-Tarea1/main/Assets/Results/CorrelationMatrix_STRONG.png)
 
-![Matriz de correlación débil](Assets/Results/CorrelationMatrix_WEAK.png)
+![Matriz de correlación débil](https://raw.githubusercontent.com/UIDE-Tareas/10-Machine-Learning-Supervised-And-Unsupervised-Tarea1/main/Assets/Results/CorrelationMatrix_WEAK.png)
 
 La matriz completa se calcula sobre `X Train`, es decir, solo sobre las variables predictoras del conjunto de entrenamiento. Esto evita usar información del conjunto de prueba durante el análisis exploratorio posterior al split.
 
@@ -210,9 +231,9 @@ Assets/Results/PolynomialRegression_RegressionResults.png
 Assets/Results/RidgeRegression_RegressionResults.png
 ```
 
-![Resultados de Polynomial Regression](Assets/Results/PolynomialRegression_RegressionResults.png)
+![Resultados de Polynomial Regression](https://raw.githubusercontent.com/UIDE-Tareas/10-Machine-Learning-Supervised-And-Unsupervised-Tarea1/main/Assets/Results/PolynomialRegression_RegressionResults.png)
 
-![Resultados de Ridge Regression](Assets/Results/RidgeRegression_RegressionResults.png)
+![Resultados de Ridge Regression](https://raw.githubusercontent.com/UIDE-Tareas/10-Machine-Learning-Supervised-And-Unsupervised-Tarea1/main/Assets/Results/RidgeRegression_RegressionResults.png)
 
 Los gráficos `Actual vs Predicted` muestran que las predicciones de ambos modelos se alinean muy cerca de la línea ideal. Esto sugiere que los modelos capturan bien la relación entre las variables predictoras y `PerformanceIndex`.
 
@@ -291,34 +312,42 @@ Los modelos utilizados son:
 
 ### Polynomial Regression
 
-La regresión polinomial permite modelar relaciones no lineales entre las variables predictoras y la variable objetivo. En este proyecto se construye con `PolynomialFeatures`, que genera combinaciones polinomiales e interacciones entre las variables de entrada (scikit-learn developers, s. f.-b). Luego se aplica `StandardScaler` para escalar las variables generadas y finalmente `LinearRegression` entrena el modelo sobre esas nuevas características.
+La regresión polinomial se usa cuando se quiere permitir que el modelo capture relaciones un poco más flexibles que una línea recta. En lugar de trabajar solo con las columnas originales, primero se crean nuevas columnas a partir de ellas, por ejemplo cuadrados o combinaciones entre variables.
 
-Se usa `POLYNOMIAL_DEGREE = 2` porque es un punto de partida razonable: permite capturar curvaturas e interacciones simples sin aumentar demasiado la complejidad del modelo. Grados más altos podrían generar muchas columnas adicionales y aumentar el riesgo de sobreajuste.
+En este proyecto, `PolynomialFeatures` crea esas nuevas columnas (scikit-learn developers, s. f.-b). Después, `StandardScaler` ajusta la escala de los datos para que las columnas sean comparables entre sí. Finalmente, `LinearRegression` aprende la relación entre esas columnas transformadas y `PerformanceIndex`.
+
+Aunque aparece `LinearRegression`, el modelo sigue siendo una regresión polinomial porque la regresión lineal se aplica después de transformar los datos. En otras palabras, no se entrena sobre los datos originales tal como vienen, sino sobre una versión enriquecida con características polinomiales.
+
+Se usa `POLYNOMIAL_DEGREE = 2` porque permite capturar relaciones simples no lineales sin volver el modelo demasiado complejo. Un grado más alto podría crear muchas más columnas y aumentar el riesgo de que el modelo aprenda demasiado bien el entrenamiento, pero generalice peor en datos nuevos.
 
 ### Ridge Regression
 
-Ridge Regression es una regresión lineal regularizada con penalización L2 (scikit-learn developers, s. f.-a). Esta penalización reduce la magnitud de los coeficientes y ayuda a controlar problemas de varianza o multicolinealidad. En este proyecto se usa junto con `StandardScaler`, porque Ridge es sensible a la escala de las variables.
+Ridge Regression es una regresión lineal con regularización (scikit-learn developers, s. f.-a). Esto significa que, además de buscar buenas predicciones, el modelo intenta evitar coeficientes demasiado grandes. Esa restricción ayuda a que el modelo sea más estable.
 
-Se usa `RIDGE_ALPHA = 1.0` como valor inicial de regularización. Un `alpha` mayor aumenta la penalización y puede simplificar el modelo; un `alpha` menor se acerca más a una regresión lineal ordinaria.
+Este modelo es útil cuando se quiere una alternativa más controlada que una regresión lineal tradicional. También funciona bien cuando hay varias variables predictoras y se desea reducir el riesgo de que una variable domine demasiado el modelo.
+
+En este proyecto se usa junto con `StandardScaler` porque Ridge trabaja mejor cuando las variables están en escalas comparables. Se configura `RIDGE_ALPHA = 1.0` como valor inicial. Un valor mayor aumenta la regularización; un valor menor hace que el modelo se parezca más a una regresión lineal común.
 
 Las métricas calculadas son:
 
-- `MAE`: Error absoluto medio.
-- `MSE`: Error cuadrático medio.
-- `RMSE`: Raíz del error cuadrático medio.
-- `R2`: Coeficiente de determinación.
+- `MAE`: indica el error promedio en unidades de `PerformanceIndex`, sin considerar la dirección del error.
+- `MSE`: penaliza más los errores grandes porque eleva los errores al cuadrado.
+- `RMSE`: es similar al `MSE`, pero vuelve a la escala original de `PerformanceIndex`, por lo que es más fácil de interpretar.
+- `R2`: indica qué tanto de la variación de la variable objetivo logra explicar el modelo. Mientras más cercano a `1`, mejor.
 
 ## 9. Conclusión Y Recomendación
 
 El proyecto implementa un flujo completo de regresión supervisada: descarga del dataset, carga, inspección, limpieza, codificación de variables categóricas, división train/test, visualización, entrenamiento, evaluación y comparación de modelos.
 
-El dataset es apropiado para este ejercicio porque tiene una variable objetivo numérica (`PerformanceIndex`) y varias variables predictoras relacionadas con hábitos o antecedentes académicos. Sin embargo, al ser un dataset sintético, las conclusiones deben interpretarse como resultado de un ejercicio académico y no como evidencia directa de comportamiento real de estudiantes.
+El dataset es adecuado para este ejercicio porque tiene una variable objetivo numérica (`PerformanceIndex`) y varias variables predictoras relacionadas con hábitos o antecedentes académicos. Sin embargo, al ser un dataset sintético, los resultados deben entenderse como parte de una práctica académica. No deben interpretarse como conclusiones reales sobre estudiantes.
 
-Los gráficos de distribución muestran que `PerformanceIndex` tiene un rango amplio y sin outliers extremos evidentes. Las matrices de correlación entre predictores muestran baja multicolinealidad, lo cual favorece el uso de modelos lineales y regularizados. Los gráficos de predicción contra valores reales muestran que ambos modelos se ajustan muy bien al conjunto de prueba.
+Los gráficos de distribución muestran que `PerformanceIndex` tiene un rango amplio y sin valores extremos demasiado marcados. Las matrices de correlación indican que las variables predictoras no están fuertemente correlacionadas entre sí. Esto es positivo, porque reduce el riesgo de redundancia entre columnas.
 
-Como recomendación general, Ridge Regression es una opción sólida como modelo base porque es más simple, regularizado e interpretable. Polynomial Regression puede ser útil si se desea capturar interacciones o relaciones no lineales, pero debe usarse con cuidado porque al aumentar el grado polinomial también aumenta la complejidad y el riesgo de sobreajuste.
+Los gráficos `Actual vs Predicted` muestran que ambos modelos predicen valores muy cercanos a los reales. Además, los residuos se mantienen alrededor de cero, lo que sugiere que los errores no tienen un patrón fuerte evidente.
 
-Para una mejora futura, se recomienda probar validación cruzada y búsqueda de hiperparámetros para `RIDGE_ALPHA` y `POLYNOMIAL_DEGREE`, en lugar de usar valores fijos.
+Como recomendación general, Ridge Regression es una buena opción base porque es más simple y estable. Polynomial Regression también funciona bien y puede capturar relaciones más complejas, pero debe usarse con cuidado porque puede crecer en complejidad rápidamente.
+
+Para una mejora futura, sería recomendable probar validación cruzada y búsqueda de hiperparámetros para `RIDGE_ALPHA` y `POLYNOMIAL_DEGREE`, en lugar de dejar esos valores fijos.
 
 ## 10. Referencias
 
